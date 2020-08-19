@@ -19,12 +19,9 @@ import (
 	"log"
 
 	"github.com/StudioAquatan/hacku2020/pkg/email"
-
 	"github.com/StudioAquatan/hacku2020/pkg/slack"
-
-	"github.com/spf13/viper"
-
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // runCmd represents the run command
@@ -59,7 +56,9 @@ func runServer() {
 	go email.WatchEmail(body, server, box, addr, pass)
 
 	for {
-		log.Printf("body: %s", <-body)
+		if !email.ClassifyMail(<-body) {
+			continue
+		}
 
 		//TODO ユーザ名，アイコン，テキストを考える
 		userName := "はげましちゃん"
@@ -70,7 +69,7 @@ func runServer() {
 		err := i.PostMessage(text)
 		if err != nil {
 			log.Printf("[ERROR] %s", err)
+
 		}
 	}
-
 }

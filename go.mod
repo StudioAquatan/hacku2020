@@ -9,6 +9,9 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/slack-go/slack v0.6.6
+	github.com/onsi/ginkgo v1.14.0
+	github.com/onsi/gomega v1.10.1
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/viper v1.7.1
+	golang.org/x/sys v0.0.0-20200819091447-39769834ee22 // indirect
 )
