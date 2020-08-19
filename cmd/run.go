@@ -16,8 +16,11 @@ limitations under the License.
 package cmd
 
 import (
-	"fmt"
+	"log"
 
+	"github.com/spf13/viper"
+
+	"github.com/StudioAquatan/hacku2020/pkg/email"
 	"github.com/spf13/cobra"
 )
 
@@ -27,10 +30,29 @@ var runCmd = &cobra.Command{
 	Short: "run server",
 	Long:  `run server`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("run called")
+		runServer()
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(runCmd)
+	_ = viper.BindEnv("run.server", "EMAIL_SERVER")
+	_ = viper.BindEnv("run.addr", "EMAIL_ADDR")
+	_ = viper.BindEnv("run.password", "EMAIL_PASSWORD")
+	_ = viper.BindEnv("run.box", "EMAIL_BOX")
+}
+
+func runServer() {
+	server := viper.GetString("run.server")
+	addr := viper.GetString("run.addr")
+	pass := viper.GetString("run.password")
+	box := viper.GetString("run.box")
+	body := make(chan string)
+
+	go email.WatchEmail(body, server, box, addr, pass)
+
+	for {
+		log.Printf("body: %s", <-body)
+	}
+
 }
