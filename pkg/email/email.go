@@ -13,7 +13,12 @@ import (
 	"github.com/emersion/go-imap/client"
 )
 
-func WatchEmail(body chan string, addr, box, userName, pass string) {
+type EmailContent struct {
+	Subject string
+	Body    string
+}
+
+func WatchEmail(ecChan chan EmailContent, addr, box, userName, pass string) {
 	c, err := login(addr, userName, pass)
 	if err != nil {
 		log.Fatalf("[ERROR] %s", err)
@@ -43,7 +48,7 @@ func WatchEmail(body chan string, addr, box, userName, pass string) {
 		case update := <-updates:
 			if _, ok := update.(*client.MailboxUpdate); ok {
 				log.Println("[INFO] Mailbox has updated")
-				fetchBody(body, addr, box, userName, pass)
+				fetchBody(ecChan, addr, box, userName, pass)
 			}
 		case err := <-done:
 			if err != nil {
@@ -55,7 +60,7 @@ func WatchEmail(body chan string, addr, box, userName, pass string) {
 	}
 }
 
-func fetchBody(body chan string, addr, box, userName, pass string) {
+func fetchBody(ecChan chan EmailContent, addr, box, userName, pass string) {
 	c, err := login(addr, userName, pass)
 	if err != nil {
 		log.Fatalf("[ERROR] %s", err)
@@ -121,7 +126,11 @@ func fetchBody(body chan string, addr, box, userName, pass string) {
 			if err != nil {
 				log.Fatalf("[ERROR] %s", err)
 			}
-			body <- subject + string(b)
+			ec := EmailContent{
+				Subject: subject,
+				Body:    string(b),
+			}
+			ecChan <- ec
 		}
 	}
 }

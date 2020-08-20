@@ -51,12 +51,18 @@ func runServer() {
 	box := viper.GetString("run.box")
 	token := viper.GetString("run.token")
 	channelID := viper.GetString("run.channel")
-	body := make(chan string)
+	ecChan := make(chan email.EmailContent)
 
-	go email.WatchEmail(body, server, box, addr, pass)
+	go email.WatchEmail(ecChan, server, box, addr, pass)
 
 	for {
-		if !email.ClassifyMail(<-body) {
+		ec := <-ecChan
+		if !email.ClassifyMail(ec.Subject) {
+			log.Printf("[INFO] Ignored email subject: %s", ec.Subject)
+			continue
+		}
+		if !email.ClassifyMail(ec.Body) {
+			log.Printf("[INFO] Ignored email Body: %s", ec.Body)
 			continue
 		}
 
