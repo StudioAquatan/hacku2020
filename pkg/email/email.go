@@ -99,6 +99,12 @@ func fetchBody(body chan string, addr, box, userName, pass string) {
 
 	}
 
+	header := mr.Header
+	subject, err := header.Subject()
+	if err != nil {
+		log.Fatalf("[ERROR] %s", err)
+	}
+
 	// Process each message's part
 	for {
 		p, err := mr.NextPart()
@@ -115,7 +121,7 @@ func fetchBody(body chan string, addr, box, userName, pass string) {
 			if err != nil {
 				log.Fatalf("[ERROR] %s", err)
 			}
-			body <- string(b)
+			body <- subject + string(b)
 		}
 	}
 }

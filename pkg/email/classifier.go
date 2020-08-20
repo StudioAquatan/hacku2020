@@ -3,6 +3,7 @@ package email
 import "strings"
 
 var oinoriWords = []string{
+	"選考結果",
 	"残念ながら",
 	"貴殿の今後のご活躍を",
 	"期待に添えない",

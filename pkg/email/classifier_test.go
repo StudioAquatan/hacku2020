@@ -11,6 +11,7 @@ var _ = Describe("Classifier", func() {
 		When("the email has come", func() {
 			It("returns true", func() {
 				testCases := []string{
+					"選考結果",
 					"この度は弊社の面接にご参加頂き、誠にありがとうございました。誠に残念ながら、今回は貴意に添いかねる結果となりました。",
 					"この度はご期待に添えない結果となりました。",
 					"貴殿の今後のご活躍を心よりお祈り申し上げます。",
