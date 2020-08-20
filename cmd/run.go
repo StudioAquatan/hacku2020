@@ -19,12 +19,9 @@ import (
 	"log"
 
 	"github.com/StudioAquatan/hacku2020/pkg/email"
-
 	"github.com/StudioAquatan/hacku2020/pkg/slack"
-
-	"github.com/spf13/viper"
-
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // runCmd represents the run command
@@ -54,12 +51,20 @@ func runServer() {
 	box := viper.GetString("run.box")
 	token := viper.GetString("run.token")
 	channelID := viper.GetString("run.channel")
-	body := make(chan string)
+	ecChan := make(chan email.Content)
 
-	go email.WatchEmail(body, server, box, addr, pass)
+	go email.WatchEmail(ecChan, server, box, addr, pass)
 
 	for {
-		log.Printf("body: %s", <-body)
+		ec := <-ecChan
+		if !email.ClassifyMail(ec.Subject) {
+			log.Printf("[INFO] Ignored email subject: %s", ec.Subject)
+			continue
+		}
+		if !email.ClassifyMail(ec.Body) {
+			log.Printf("[INFO] Ignored email Body: %s", ec.Body)
+			continue
+		}
 
 		//TODO ユーザ名，アイコン，テキストを考える
 		userName := "はげましちゃん"
@@ -70,7 +75,7 @@ func runServer() {
 		err := i.PostMessage(text)
 		if err != nil {
 			log.Printf("[ERROR] %s", err)
+
 		}
 	}
-
 }

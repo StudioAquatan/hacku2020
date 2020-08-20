@@ -1,6 +1,10 @@
 package slack
 
-import "github.com/slack-go/slack"
+import (
+	"log"
+
+	"github.com/slack-go/slack"
+)
 
 type MessageInfo struct {
 	Api       slack.Client
@@ -28,6 +32,6 @@ func (i *MessageInfo) PostMessage(t string) error {
 	); err != nil {
 		return err
 	}
-
+	log.Printf("[INFO] Post message %v", i)
 	return nil
 }
