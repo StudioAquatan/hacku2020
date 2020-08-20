@@ -51,7 +51,7 @@ func runServer() {
 	box := viper.GetString("run.box")
 	token := viper.GetString("run.token")
 	channelID := viper.GetString("run.channel")
-	ecChan := make(chan email.EmailContent)
+	ecChan := make(chan email.Content)
 
 	go email.WatchEmail(ecChan, server, box, addr, pass)
 

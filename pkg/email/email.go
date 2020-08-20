@@ -13,12 +13,12 @@ import (
 	"github.com/emersion/go-imap/client"
 )
 
-type EmailContent struct {
+type Content struct {
 	Subject string
 	Body    string
 }
 
-func WatchEmail(ecChan chan EmailContent, addr, box, userName, pass string) {
+func WatchEmail(ecChan chan Content, addr, box, userName, pass string) {
 	c, err := login(addr, userName, pass)
 	if err != nil {
 		log.Fatalf("[ERROR] %s", err)
@@ -60,7 +60,7 @@ func WatchEmail(ecChan chan EmailContent, addr, box, userName, pass string) {
 	}
 }
 
-func fetchBody(ecChan chan EmailContent, addr, box, userName, pass string) {
+func fetchBody(ecChan chan Content, addr, box, userName, pass string) {
 	c, err := login(addr, userName, pass)
 	if err != nil {
 		log.Fatalf("[ERROR] %s", err)
@@ -126,7 +126,7 @@ func fetchBody(ecChan chan EmailContent, addr, box, userName, pass string) {
 			if err != nil {
 				log.Fatalf("[ERROR] %s", err)
 			}
-			ec := EmailContent{
+			ec := Content{
 				Subject: subject,
 				Body:    string(b),
 			}
