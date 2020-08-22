@@ -1,6 +1,7 @@
 package character
 
 import (
+	"log"
 	"math/rand"
 	"time"
 )
@@ -55,6 +56,10 @@ func CreateMessageInfoByRandom(cis []Info, messageNum int) *[]MessageInfo {
 		cis[characterIndex].removeMessage(messageIndex)
 		if len(cis[characterIndex].Message) == 0 {
 			cis = removeCharacter(&cis, characterIndex)
+		}
+		if len(cis) == 0 {
+			log.Println("[INFO] No left message")
+			break
 		}
 	}
 
