@@ -57,11 +57,11 @@ func runServer() {
 
 	for {
 		ec := <-ecChan
-		if !email.ClassifyMail(ec.Subject) {
+		if !email.ClassifyMailBySubj(ec.Subject) {
 			log.Printf("[INFO] Ignored email subject: %s", ec.Subject)
 			continue
 		}
-		if !email.ClassifyMail(ec.Body) {
+		if !email.ClassifyMailByBody(ec.Body) {
 			log.Printf("[INFO] Ignored email Body: %s", ec.Body)
 			continue
 		}

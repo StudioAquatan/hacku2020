@@ -2,17 +2,29 @@ package email
 
 import "strings"
 
-var oinoriWords = []string{
+var oinoriWordsSubj = []string{
 	"選考結果",
-	"残念ながら",
+}
+var oinoriWordsBody = []string{
+	"残念",
 	"貴殿の今後のご活躍を",
-	"期待に添えない",
-	"慎重に選考",
+	"期待に添",
+	"誠に申し訳ございません",
 }
 
-// Classify if it's a "oinori" email
-func ClassifyMail(body string) bool {
-	for _, word := range oinoriWords {
+// Classify if it's a "oinori" email using its subject
+func ClassifyMailBySubj(subj string) bool {
+	for _, word := range oinoriWordsSubj {
+		if strings.Contains(subj, word) {
+			return true
+		}
+	}
+	return false
+}
+
+// Classify if it's a "oinori" email using its body
+func ClassifyMailByBody(body string) bool {
+	for _, word := range oinoriWordsBody {
 		if strings.Contains(body, word) {
 			return true
 		}
