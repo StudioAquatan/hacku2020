@@ -17,12 +17,21 @@ package cmd
 
 import (
 	"log"
+	"path/filepath"
+	"time"
 
 	"github.com/StudioAquatan/hacku2020/pkg/email"
+
+	"github.com/StudioAquatan/hacku2020/pkg/character"
 	"github.com/StudioAquatan/hacku2020/pkg/slack"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
+
+type YamlConfig struct {
+	Characters []character.Info
+}
 
 // runCmd represents the run command
 var runCmd = &cobra.Command{
@@ -36,15 +45,26 @@ var runCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(runCmd)
+
+	flags := runCmd.Flags()
+	flags.StringP("character-config-path", "c", "", "A path to the character config file")
+	flags.StringP("message-num", "n", "1", "a number of slack message")
+
+	_ = viper.BindPFlag("run.config", flags.Lookup("character-config-path"))
+	_ = viper.BindPFlag("run.num", flags.Lookup("message-num"))
 	_ = viper.BindEnv("run.server", "EMAIL_SERVER")
 	_ = viper.BindEnv("run.addr", "EMAIL_ADDR")
 	_ = viper.BindEnv("run.password", "EMAIL_PASSWORD")
 	_ = viper.BindEnv("run.box", "EMAIL_BOX")
 	_ = viper.BindEnv("run.token", "SLACK_TOKEN")
 	_ = viper.BindEnv("run.channel", "SLACK_CHANNEL")
+
+	_ = runCmd.MarkFlagRequired("character-config-path")
 }
 
 func runServer() {
+	configPath := viper.GetString("run.config")
+	messageNum := viper.GetInt("run.num")
 	server := viper.GetString("run.server")
 	addr := viper.GetString("run.addr")
 	pass := viper.GetString("run.password")
@@ -53,6 +73,21 @@ func runServer() {
 	channelID := viper.GetString("run.channel")
 	ecChan := make(chan email.Content)
 
+	dirPath, fileName := filepath.Split(configPath)
+	viper.SetConfigName(fileName)
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(dirPath)
+	err := viper.ReadInConfig()
+	if err != nil {
+		log.Fatalf("Fatal error config file: %s \n", err)
+	}
+
+	var yc YamlConfig
+	err = viper.Unmarshal(&yc)
+	if err != nil {
+		log.Fatalf("Fatal error unmarshal config file: %s \n", err)
+	}
+	cis := yc.Characters
 	go email.WatchEmail(ecChan, server, box, addr, pass)
 
 	for {
@@ -65,17 +100,14 @@ func runServer() {
 			log.Printf("[INFO] Ignored email Body: %s", ec.Body)
 			continue
 		}
-
-		//TODO ユーザ名，アイコン，テキストを考える
-		userName := "はげましちゃん"
-		iconEmoji := ":linse:"
-		text := "これからです……！"
-
-		i := slack.NewMessageInfo(token, channelID, userName, iconEmoji)
-		err := i.PostMessage(text)
-		if err != nil {
-			log.Printf("[ERROR] %s", err)
-
+		mis := character.CreateMessageInfoByRandom(cis, messageNum)
+		for _, mi := range *mis {
+			i := slack.NewSlackMessageInfo(token, channelID, mi.Name, mi.Icon, mi.Message)
+			err := i.PostMessage()
+			if err != nil {
+				log.Printf("[ERROR] %s", err)
+			}
+			time.Sleep(1 * time.Second)
 		}
 	}
 }
