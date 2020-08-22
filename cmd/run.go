@@ -21,9 +21,9 @@ import (
 	"time"
 
 	"github.com/StudioAquatan/hacku2020/pkg/email"
+	"github.com/StudioAquatan/hacku2020/pkg/slack"
 
 	"github.com/StudioAquatan/hacku2020/pkg/character"
-	"github.com/StudioAquatan/hacku2020/pkg/slack"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -88,6 +88,7 @@ func runServer() {
 		log.Fatalf("Fatal error unmarshal config file: %s \n", err)
 	}
 	cis := yc.Characters
+
 	go email.WatchEmail(ecChan, server, box, addr, pass)
 
 	for {
@@ -100,6 +101,11 @@ func runServer() {
 			log.Printf("[INFO] Ignored email Body: %s", ec.Body)
 			continue
 		}
+		if !email.ClassifyMailBySentiment(ec.Body) {
+			log.Printf("[INFO] Ignored email by sentiment score: %s", ec.Body)
+			continue
+		}
+
 		mis := character.CreateMessageInfoByRandom(cis, messageNum)
 		for _, mi := range *mis {
 			i := slack.NewSlackMessageInfo(token, channelID, mi.Name, mi.Icon, mi.Message)
