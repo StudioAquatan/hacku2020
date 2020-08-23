@@ -92,21 +92,25 @@ func runServer() {
 	go email.WatchEmail(ecChan, server, box, addr, pass)
 
 	for {
+		var oinori bool
 		ec := <-ecChan
-		if !email.ClassifyMailBySubj(ec.Subject) {
+		if !email.ClassifyScreeningMailBySubj(ec.Subject) {
 			log.Printf("[INFO] Ignored email subject: %s", ec.Subject)
 			continue
 		}
-		if !email.ClassifyMailByBody(ec.Body) {
+		if email.ClassifyAcceptanceMailByBody(ec.Body) {
+			oinori = true
+		}
+		if !email.ClassifyOinoriMailByBody(ec.Body) && !oinori {
 			log.Printf("[INFO] Ignored email Body: %s", ec.Body)
 			continue
 		}
-		if !email.ClassifyMailBySentiment(ec.Body) {
+		if !email.ClassifyOinoriMailBySentiment(ec.Body) {
 			log.Printf("[INFO] Ignored email by sentiment score: %s", ec.Body)
 			continue
 		}
 
-		mis := character.CreateMessageInfoByRandom(cis, messageNum)
+		mis := character.CreateMessageInfoByRandom(cis, messageNum, oinori)
 		for _, mi := range *mis {
 			i := slack.NewSlackMessageInfo(token, channelID, mi.Name, mi.Icon, mi.Message)
 			err := i.PostMessage()

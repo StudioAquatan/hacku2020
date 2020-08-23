@@ -3,15 +3,13 @@ package email
 import (
 	"context"
 	"log"
-	"os"
 	"strings"
 
 	language "cloud.google.com/go/language/apiv1"
-	"github.com/golang/protobuf/proto"
 	languagepb "google.golang.org/genproto/googleapis/cloud/language/v1"
 )
 
-var oinoriWordsSubj = []string{
+var screeningMailSubj = []string{
 	"選考結果",
 }
 var oinoriWordsBody = []string{
@@ -21,9 +19,17 @@ var oinoriWordsBody = []string{
 	"誠に申し訳ございません",
 }
 
+var acceptanceWordsBody = []string{
+	"是非参加",
+	"ぜひ参加",
+	"ご参加いただきたく",
+	"お会いできますこと",
+	"心よりお待ちしております",
+}
+
 // Classify if it's a "oinori" email using its subject
-func ClassifyMailBySubj(subj string) bool {
-	for _, word := range oinoriWordsSubj {
+func ClassifyScreeningMailBySubj(subj string) bool {
+	for _, word := range screeningMailSubj {
 		if strings.Contains(subj, word) {
 			return true
 		}
@@ -32,7 +38,7 @@ func ClassifyMailBySubj(subj string) bool {
 }
 
 // Classify if it's a "oinori" email using its body
-func ClassifyMailByBody(body string) bool {
+func ClassifyOinoriMailByBody(body string) bool {
 	for _, word := range oinoriWordsBody {
 		if strings.Contains(body, word) {
 			return true
@@ -41,7 +47,7 @@ func ClassifyMailByBody(body string) bool {
 	return false
 }
 
-func ClassifyMailBySentiment(s string) bool {
+func ClassifyOinoriMailBySentiment(s string) bool {
 	ctx := context.Background()
 	client, err := language.NewClient(ctx)
 	if err != nil {
@@ -55,6 +61,15 @@ func ClassifyMailBySentiment(s string) bool {
 	}
 }
 
+func ClassifyAcceptanceMailByBody(body string) bool {
+	for _, word := range acceptanceWordsBody {
+		if strings.Contains(body, word) {
+			return true
+		}
+	}
+	return false
+}
+
 func analyzeSentiment(ctx context.Context, client *language.Client, text string) (*languagepb.AnalyzeSentimentResponse, error) {
 	return client.AnalyzeSentiment(ctx, &languagepb.AnalyzeSentimentRequest{
 		Document: &languagepb.Document{
@@ -64,11 +79,4 @@ func analyzeSentiment(ctx context.Context, client *language.Client, text string)
 			Type: languagepb.Document_PLAIN_TEXT,
 		},
 	})
-}
-
-func printResp(v proto.Message, err error) {
-	if err != nil {
-		log.Fatal(err)
-	}
-	proto.MarshalText(os.Stdout, v)
 }
