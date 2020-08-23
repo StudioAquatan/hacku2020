@@ -7,7 +7,6 @@ require (
 	github.com/emersion/go-imap v1.0.5
 	github.com/emersion/go-imap-idle v0.0.0-20200601154248-f05f54664cc4
 	github.com/emersion/go-message v0.12.0
-	github.com/golang/protobuf v1.4.2
 	github.com/onsi/ginkgo v1.14.0
 	github.com/onsi/gomega v1.10.1
 	github.com/pkg/errors v0.9.1 // indirect
