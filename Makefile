@@ -12,3 +12,6 @@ fmt:
 vet:
 	go vet ./...
 
+docker-build:
+	docker -t studioaquatan/oinori:$(git rev-parse --short HEAD) .
+
