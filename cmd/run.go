@@ -16,7 +16,10 @@ limitations under the License.
 package cmd
 
 import (
+	"io/ioutil"
 	"log"
+	"net/http"
+	"net/url"
 	"path/filepath"
 	"time"
 
@@ -43,15 +46,22 @@ var runCmd = &cobra.Command{
 	},
 }
 
+const LightEndpointPath = "/light"
+const M5stackEndpointPath = "/status"
+
 func init() {
 	rootCmd.AddCommand(runCmd)
 
 	flags := runCmd.Flags()
 	flags.StringP("character-config-path", "c", "", "A path to the character config file")
 	flags.StringP("message-num", "n", "1", "a number of slack message")
+	flags.StringP("light-host", "l", "", "ip or hostname for lighting")
+	flags.StringP("m5stack-host", "m", "", "ip or hostname to m5stack")
 
 	_ = viper.BindPFlag("run.config", flags.Lookup("character-config-path"))
 	_ = viper.BindPFlag("run.num", flags.Lookup("message-num"))
+	_ = viper.BindPFlag("run.light", flags.Lookup("light-host"))
+	_ = viper.BindPFlag("run.m5stack", flags.Lookup("m5stack-host"))
 	_ = viper.BindEnv("run.server", "EMAIL_SERVER")
 	_ = viper.BindEnv("run.addr", "EMAIL_ADDR")
 	_ = viper.BindEnv("run.password", "EMAIL_PASSWORD")
@@ -60,6 +70,8 @@ func init() {
 	_ = viper.BindEnv("run.channel", "SLACK_CHANNEL")
 
 	_ = runCmd.MarkFlagRequired("character-config-path")
+	_ = runCmd.MarkFlagRequired("light-host")
+	_ = runCmd.MarkFlagRequired("m5stack-host")
 }
 
 func runServer() {
@@ -110,6 +122,8 @@ func runServer() {
 			continue
 		}
 
+		notify(oinori)
+
 		mis := character.CreateMessageInfoByRandom(cis, messageNum, oinori)
 		for _, mi := range *mis {
 			i := slack.NewSlackMessageInfo(token, channelID, mi.Name, mi.Icon, mi.Message)
@@ -120,4 +134,69 @@ func runServer() {
 			time.Sleep(1 * time.Second)
 		}
 	}
+}
+
+func notify(oinori bool) {
+	lightAddr := viper.GetString("run.light")
+	m5stackAddr := viper.GetString("run.m5stack")
+	respLight := make(chan string)
+	respM5stack := make(chan string)
+
+	go notifyLight(lightAddr, oinori, respLight)
+	go notifyM5stack(m5stackAddr, oinori, respM5stack)
+
+	log.Printf("[INFO] light api response: %s", <-respLight)
+	log.Printf("[INFO] m5stack api response: %s", <-respM5stack)
+
+	return
+}
+
+func notifyLight(addr string, oinori bool, respStr chan string) {
+	urlVal := url.Values{}
+	if oinori {
+		urlVal.Add("status", "negative")
+	} else {
+		urlVal.Add("status", "positive")
+	}
+	urlStr := "http://" + addr + LightEndpointPath + urlVal.Encode()
+	resp, err := http.Get(urlStr)
+	if err != nil {
+		log.Printf("[ERROR] POST to Light API failed: %s", err)
+		respStr <- ""
+		return
+	}
+	defer resp.Body.Close()
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("[ERROR] ioutil.ReadAll failed: %s", err)
+		respStr <- ""
+		return
+	}
+	respStr <- string(b)
+}
+
+func notifyM5stack(addr string, oinori bool, respStr chan string) {
+	urlVal := url.Values{}
+	if oinori {
+		urlVal.Add("status", "negative")
+	} else {
+		urlVal.Add("status", "positive")
+	}
+	urlStr := "http://" + addr + M5stackEndpointPath + urlVal.Encode()
+	resp, err := http.Get(urlStr)
+	if err != nil {
+		log.Printf("[ERROR] POST to M5stack API failed: %s", err)
+		respStr <- ""
+		return
+	}
+	defer resp.Body.Close()
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("[ERROR] ioutil.ReadAll failed: %s", err)
+		respStr <- ""
+		return
+	}
+	respStr <- string(b)
 }
