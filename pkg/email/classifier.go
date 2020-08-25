@@ -47,7 +47,7 @@ func ClassifyOinoriMailByBody(body string) bool {
 	return false
 }
 
-func ClassifyOinoriMailBySentiment(s string) bool {
+func ClassifyOinoriMailBySentiment(s string) (bool, float32) {
 	ctx := context.Background()
 	client, err := language.NewClient(ctx)
 	if err != nil {
@@ -55,9 +55,9 @@ func ClassifyOinoriMailBySentiment(s string) bool {
 	}
 	resp, err := analyzeSentiment(ctx, client, s)
 	if resp != nil && resp.DocumentSentiment.Score < 0 {
-		return true
+		return true, resp.DocumentSentiment.Score
 	} else {
-		return false
+		return false, resp.DocumentSentiment.Score
 	}
 }
 

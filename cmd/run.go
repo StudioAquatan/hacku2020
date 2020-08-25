@@ -120,9 +120,9 @@ func runServer() {
 			log.Printf("[INFO] Ignored email Body: %s", ec.Body)
 			continue
 		}
-		if !email.ClassifyOinoriMailBySentiment(ec.Body) {
-			log.Printf("[INFO] Ignored email by sentiment score: %s", ec.Body)
-			continue
+		if res, score := email.ClassifyOinoriMailBySentiment(ec.Body); res {
+			log.Printf("[INFO] Sentiment score:%f\n", score)
+			oinori = false
 		}
 
 		wg := &sync.WaitGroup{}
