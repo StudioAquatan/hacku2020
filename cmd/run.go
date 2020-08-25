@@ -102,60 +102,57 @@ func runServer() {
 	//go email.WatchEmail(ecChan, server, box, addr, pass)
 
 	//for {
-		oinori := true
-		//ec := <-ecChan
-		//if !email.ClassifyScreeningMailBySubj(ec.Subject) {
-		//	log.Printf("[INFO] Ignored email subject: %s", ec.Subject)
-		//	continue
-		//}
-		//if email.ClassifyAcceptanceMailByBody(ec.Body) {
-		//	oinori = false
-		//}
-		//if !email.ClassifyOinoriMailByBody(ec.Body) && oinori {
-		//	log.Printf("[INFO] Ignored email Body: %s", ec.Body)
-		//	continue
-		//}
-		//if !email.ClassifyOinoriMailBySentiment(ec.Body) {
-		//	log.Printf("[INFO] Ignored email by sentiment score: %s", ec.Body)
-		//	continue
-		//}
+	oinori := true
+	//ec := <-ecChan
+	//if !email.ClassifyScreeningMailBySubj(ec.Subject) {
+	//	log.Printf("[INFO] Ignored email subject: %s", ec.Subject)
+	//	continue
+	//}
+	//if email.ClassifyAcceptanceMailByBody(ec.Body) {
+	//	oinori = false
+	//}
+	//if !email.ClassifyOinoriMailByBody(ec.Body) && oinori {
+	//	log.Printf("[INFO] Ignored email Body: %s", ec.Body)
+	//	continue
+	//}
+	//if !email.ClassifyOinoriMailBySentiment(ec.Body) {
+	//	log.Printf("[INFO] Ignored email by sentiment score: %s", ec.Body)
+	//	continue
+	//}
 
-		wg := &sync.WaitGroup{} // WaitGroupの値を作る
-		go func() {
-			wg.Add(1)
-			log.Print("passed")
-			notify(oinori)
-			wg.Done()
-		}()
+	wg := &sync.WaitGroup{} // WaitGroupの値を作る
+	wg.Add(1)
+	go func() {
+		log.Print("passed")
+		notify(oinori)
+		wg.Done()
+	}()
 
-		//mis := character.CreateMessageInfoByRandom(cis, messageNum, oinori)
-		//for _, mi := range *mis {
-		//	i := slack.NewSlackMessageInfo(token, channelID, mi.Name, mi.Icon, mi.Message)
-		//	err := i.PostMessage()
-		//	if err != nil {
-		//		log.Printf("[ERROR] %s", err)
-		//	}
-		//	time.Sleep(1 * time.Second)
-		//}
-		wg.Wait()
+	//mis := character.CreateMessageInfoByRandom(cis, messageNum, oinori)
+	//for _, mi := range *mis {
+	//	i := slack.NewSlackMessageInfo(token, channelID, mi.Name, mi.Icon, mi.Message)
+	//	err := i.PostMessage()
+	//	if err != nil {
+	//		log.Printf("[ERROR] %s", err)
+	//	}
+	//	time.Sleep(1 * time.Second)
+	//}
+	wg.Wait()
 	//}
 }
 
 func notify(oinori bool) {
-	yeelightAddr := viper.GetString("run.light")
+	//yeelightAddr := viper.GetString("run.light")
 	m5stackAddr := viper.GetString("run.m5stack")
 	respM5stack := make(chan string)
 
 	wg := &sync.WaitGroup{} // WaitGroupの値を作る
+	wg.Add(1)
 	go func() {
-		wg.Add(1)
-		notifyLight(yeelightAddr, oinori)
+		//notifyLight(yeelightAddr, oinori)
 		notifyM5stack(m5stackAddr, oinori, respM5stack)
 		wg.Done()
 	}()
-
-
-
 
 	log.Printf("[INFO] m5stack api response: %s", <-respM5stack)
 	wg.Wait()
@@ -227,8 +224,8 @@ func notifyM5stack(addr string, oinori bool, respStr chan string) {
 	} else {
 		urlVal.Add("status", "positive")
 	}
-	urlStr := "http://" + addr + M5stackEndpointPath + urlVal.Encode()
-	resp, err := http.Get(urlStr)
+	urlStr := "http://" + addr + M5stackEndpointPath + "?" + urlVal.Encode()
+	resp, err := http.Post(urlStr, "", nil)
 	if err != nil {
 		log.Printf("[ERROR] POST to M5stack API failed: %s", err)
 		respStr <- ""
