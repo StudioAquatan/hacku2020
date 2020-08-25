@@ -16,8 +16,6 @@ limitations under the License.
 package cmd
 
 import (
-	"bufio"
-	"github.com/StudioAquatan/hacku2020/pkg/character"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -25,6 +23,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sync"
+	"time"
+
+	"github.com/StudioAquatan/hacku2020/pkg/slack"
+
+	"github.com/StudioAquatan/hacku2020/pkg/email"
+
+	"github.com/StudioAquatan/hacku2020/pkg/character"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -74,14 +79,14 @@ func init() {
 
 func runServer() {
 	configPath := viper.GetString("run.config")
-	//messageNum := viper.GetInt("run.num")
-	//server := viper.GetString("run.server")
-	//addr := viper.GetString("run.addr")
-	//pass := viper.GetString("run.password")
-	//box := viper.GetString("run.box")
-	//token := viper.GetString("run.token")
-	//channelID := viper.GetString("run.channel")
-	//ecChan := make(chan email.Content)
+	messageNum := viper.GetInt("run.num")
+	server := viper.GetString("run.server")
+	addr := viper.GetString("run.addr")
+	pass := viper.GetString("run.password")
+	box := viper.GetString("run.box")
+	token := viper.GetString("run.token")
+	channelID := viper.GetString("run.channel")
+	ecChan := make(chan email.Content)
 
 	dirPath, fileName := filepath.Split(configPath)
 	viper.SetConfigName(fileName)
@@ -97,124 +102,76 @@ func runServer() {
 	if err != nil {
 		log.Fatalf("Fatal error unmarshal config file: %s \n", err)
 	}
-	//cis := yc.Characters
+	cis := yc.Characters
 
-	//go email.WatchEmail(ecChan, server, box, addr, pass)
+	go email.WatchEmail(ecChan, server, box, addr, pass)
 
-	//for {
-	oinori := true
-	//ec := <-ecChan
-	//if !email.ClassifyScreeningMailBySubj(ec.Subject) {
-	//	log.Printf("[INFO] Ignored email subject: %s", ec.Subject)
-	//	continue
-	//}
-	//if email.ClassifyAcceptanceMailByBody(ec.Body) {
-	//	oinori = false
-	//}
-	//if !email.ClassifyOinoriMailByBody(ec.Body) && oinori {
-	//	log.Printf("[INFO] Ignored email Body: %s", ec.Body)
-	//	continue
-	//}
-	//if !email.ClassifyOinoriMailBySentiment(ec.Body) {
-	//	log.Printf("[INFO] Ignored email by sentiment score: %s", ec.Body)
-	//	continue
-	//}
+	for {
+		oinori := true
+		ec := <-ecChan
+		if !email.ClassifyScreeningMailBySubj(ec.Subject) {
+			log.Printf("[INFO] Ignored email subject: %s", ec.Subject)
+			continue
+		}
+		if email.ClassifyAcceptanceMailByBody(ec.Body) {
+			oinori = false
+		}
+		if !email.ClassifyOinoriMailByBody(ec.Body) && oinori {
+			log.Printf("[INFO] Ignored email Body: %s", ec.Body)
+			continue
+		}
+		if !email.ClassifyOinoriMailBySentiment(ec.Body) {
+			log.Printf("[INFO] Ignored email by sentiment score: %s", ec.Body)
+			continue
+		}
 
-	wg := &sync.WaitGroup{} // WaitGroupの値を作る
-	wg.Add(1)
-	go func() {
-		log.Print("passed")
-		notify(oinori)
-		wg.Done()
-	}()
+		wg := &sync.WaitGroup{}
+		wg.Add(1)
+		go func() {
+			log.Print("passed")
+			notify(oinori)
+			wg.Done()
+		}()
 
-	//mis := character.CreateMessageInfoByRandom(cis, messageNum, oinori)
-	//for _, mi := range *mis {
-	//	i := slack.NewSlackMessageInfo(token, channelID, mi.Name, mi.Icon, mi.Message)
-	//	err := i.PostMessage()
-	//	if err != nil {
-	//		log.Printf("[ERROR] %s", err)
-	//	}
-	//	time.Sleep(1 * time.Second)
-	//}
-	wg.Wait()
-	//}
+		mis := character.CreateMessageInfoByRandom(cis, messageNum, oinori)
+		for _, mi := range *mis {
+			i := slack.NewSlackMessageInfo(token, channelID, mi.Name, mi.Icon, mi.Message)
+			err := i.PostMessage()
+			if err != nil {
+				log.Printf("[ERROR] %s", err)
+			}
+			time.Sleep(1 * time.Second)
+		}
+		wg.Wait()
+	}
 }
 
 func notify(oinori bool) {
-	//yeelightAddr := viper.GetString("run.light")
+	yeelightAddr := viper.GetString("run.light")
 	m5stackAddr := viper.GetString("run.m5stack")
 	respM5stack := make(chan string)
+	respYeelight := make(chan string)
 
-	wg := &sync.WaitGroup{} // WaitGroupの値を作る
-	wg.Add(1)
-	go func() {
-		//notifyLight(yeelightAddr, oinori)
-		notifyM5stack(m5stackAddr, oinori, respM5stack)
-		wg.Done()
-	}()
+	go notifyLight(yeelightAddr, oinori, respYeelight)
+	go notifyM5stack(m5stackAddr, oinori, respM5stack)
 
+	log.Printf("[INFO] yeelight command response: %s", <-respYeelight)
 	log.Printf("[INFO] m5stack api response: %s", <-respM5stack)
-	wg.Wait()
 	return
 }
 
-func notifyLight(addr string, oinori bool) {
+func notifyLight(addr string, oinori bool, out chan string) {
 	src := "positive.py"
 	if oinori {
 		src = "negative.py"
 	}
 
 	srcPath := "./light_control/" + src
-	cmd := exec.Command("python3", srcPath, addr)
-	stdout, err := cmd.StdoutPipe()
+	res, err := exec.Command("python3", srcPath, addr).Output()
 	if err != nil {
-		log.Printf("[ERROR] yeelight script failed: %s", err)
+		log.Fatalf("[ERROR] notifyLight err: %s", err)
 	}
-
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		log.Printf("[ERROR] yeelight script failed: %s", err)
-	}
-
-	err = cmd.Run()
-	streamReader := func(scanner *bufio.Scanner, outputChan chan string, doneChan chan bool) {
-		defer close(outputChan)
-		defer close(doneChan)
-		for scanner.Scan() {
-			outputChan <- scanner.Text()
-		}
-		doneChan <- true
-	}
-
-	// stdout, stderrをひろうgoroutineを起動
-	stdoutScanner := bufio.NewScanner(stdout)
-	stdoutOutputChan := make(chan string)
-	stdoutDoneChan := make(chan bool)
-	stderrScanner := bufio.NewScanner(stderr)
-	stderrOutputChan := make(chan string)
-	stderrDoneChan := make(chan bool)
-	go streamReader(stdoutScanner, stdoutOutputChan, stdoutDoneChan)
-	go streamReader(stderrScanner, stderrOutputChan, stderrDoneChan)
-
-	// channel経由でデータを引っこ抜く
-	stillGoing := true
-	for stillGoing {
-		select {
-		case <-stdoutDoneChan:
-			stillGoing = false
-		case line := <-stdoutOutputChan:
-			log.Printf("[INFO] yeelight response: %s\n", line)
-		case line := <-stderrOutputChan:
-			log.Printf("[INFO] yeelight response: %s\n", line)
-		}
-	}
-
-	//一応Waitでプロセスの終了をまつ
-	err = cmd.Wait()
-	if err != nil {
-		log.Printf("[ERROR] yeelight script failed: %s", err)
-	}
+	out <- string(res)
 }
 
 func notifyM5stack(addr string, oinori bool, respStr chan string) {
