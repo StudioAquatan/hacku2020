@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/StudioAquatan/hacku2020/pkg/email"
@@ -122,7 +123,12 @@ func runServer() {
 			continue
 		}
 
-		notify(oinori)
+		wg := &sync.WaitGroup{} // WaitGroupの値を作る
+		go func() {
+			wg.Add(1)
+			notify(oinori)
+			wg.Done()
+		}()
 
 		mis := character.CreateMessageInfoByRandom(cis, messageNum, oinori)
 		for _, mi := range *mis {
@@ -133,6 +139,7 @@ func runServer() {
 			}
 			time.Sleep(1 * time.Second)
 		}
+		wg.Wait()
 	}
 }
 
