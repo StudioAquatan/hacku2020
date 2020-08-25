@@ -203,9 +203,9 @@ func notifyLight(addr string, oinori bool) {
 		case <-stdoutDoneChan:
 			stillGoing = false
 		case line := <-stdoutOutputChan:
-			log.Println("[INFO] yeelight response: %s", line)
+			log.Printf("[INFO] yeelight response: %s\n", line)
 		case line := <-stderrOutputChan:
-			log.Println("[INFO] yeelight response: %s", line)
+			log.Printf("[INFO] yeelight response: %s\n", line)
 		}
 	}
 
