@@ -16,14 +16,15 @@ limitations under the License.
 package cmd
 
 import (
+	"bufio"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
+	"os/exec"
 	"path/filepath"
 	"sync"
 	"time"
-	"os/exec"
 
 	"github.com/StudioAquatan/hacku2020/pkg/email"
 	"github.com/StudioAquatan/hacku2020/pkg/slack"
@@ -145,28 +146,76 @@ func runServer() {
 }
 
 func notify(oinori bool) {
-	lightAddr := viper.GetString("run.light")
+	yeelightAddr := viper.GetString("run.light")
 	m5stackAddr := viper.GetString("run.m5stack")
-	respLight := make(chan string)
 	respM5stack := make(chan string)
 
-	go notifyLight(lightAddr, oinori, respLight)
+	go notifyLight(yeelightAddr, oinori)
 	go notifyM5stack(m5stackAddr, oinori, respM5stack)
 
-	log.Printf("[INFO] light api response: %s", <-respLight)
 	log.Printf("[INFO] m5stack api response: %s", <-respM5stack)
 
 	return
 }
 
-func notifyLight(addr string, oinori bool, respStr chan string) {
+func notifyLight(addr string, oinori bool) {
+	src := "positive.py"
 	if oinori {
-		 // Negative
-		err := exec.Command("python", "./light_control/light.py", addr).Start()
-		if err != nil {
-			log.Printf("[ERROR] run light.py failed: %s", err)
-			return
+		src = "negative.py"
+	}
+
+	cmd := exec.Command("python", "./light_control/%s", src, addr)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		log.Printf("[ERROR] yeelight script failed: %s", err)
+	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		log.Printf("[ERROR] yeelight script failed: %s", err)
+	}
+
+	err = cmd.Run()
+	streamReader := func(scanner *bufio.Scanner, outputChan chan string, doneChan chan bool) {
+		defer close(outputChan)
+		defer close(doneChan)
+		for scanner.Scan() {
+			outputChan <- scanner.Text()
 		}
+		doneChan <- true
+	}
+
+	// stdout, stderrをひろうgoroutineを起動
+	stdoutScanner := bufio.NewScanner(stdout)
+	stdoutOutputChan := make(chan string)
+	stdoutDoneChan := make(chan bool)
+	stderrScanner := bufio.NewScanner(stderr)
+	stderrOutputChan := make(chan string)
+	stderrDoneChan := make(chan bool)
+	go streamReader(stdoutScanner, stdoutOutputChan, stdoutDoneChan)
+	go streamReader(stderrScanner, stderrOutputChan, stderrDoneChan)
+
+	// channel経由でデータを引っこ抜く
+	stillGoing := true
+	for stillGoing {
+		select {
+		case <-stdoutDoneChan:
+			stillGoing = false
+		case line := <-stdoutOutputChan:
+			log.Println("[INFO] yeelight response: %s", line)
+		case line := <-stderrOutputChan:
+			log.Println("[INFO] yeelight response: %s", line)
+		}
+	}
+
+	//一応Waitでプロセスの終了をまつ
+	ret := cmd.Wait()
+	if ret != nil {
+		log.Printf("[ERROR] yeelight script failed: %s", err)
+	}
+	if err != nil {
+		log.Printf("[ERROR] yeelight script failed: %s", err)
+		return
 	}
 }
 
