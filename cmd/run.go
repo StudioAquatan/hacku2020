@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+	"os/exec"
 
 	"github.com/StudioAquatan/hacku2020/pkg/email"
 	"github.com/StudioAquatan/hacku2020/pkg/slack"
@@ -159,28 +160,14 @@ func notify(oinori bool) {
 }
 
 func notifyLight(addr string, oinori bool, respStr chan string) {
-	urlVal := url.Values{}
 	if oinori {
-		urlVal.Add("status", "negative")
-	} else {
-		urlVal.Add("status", "positive")
+		 // Negative
+		err := exec.Command("python light.py", addr).Start()
+		if err != nil {
+			log.Printf("[ERROR] run light.py failed: %s", err)
+			return
+		}
 	}
-	urlStr := "http://" + addr + LightEndpointPath + urlVal.Encode()
-	resp, err := http.Get(urlStr)
-	if err != nil {
-		log.Printf("[ERROR] POST to Light API failed: %s", err)
-		respStr <- ""
-		return
-	}
-	defer resp.Body.Close()
-
-	b, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Printf("[ERROR] ioutil.ReadAll failed: %s", err)
-		respStr <- ""
-		return
-	}
-	respStr <- string(b)
 }
 
 func notifyM5stack(addr string, oinori bool, respStr chan string) {
