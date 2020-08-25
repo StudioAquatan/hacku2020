@@ -164,7 +164,8 @@ func notifyLight(addr string, oinori bool) {
 		src = "negative.py"
 	}
 
-	cmd := exec.Command("python", "./light_control/%s", src, addr)
+	srcPath := "./light_control/" + src
+	cmd := exec.Command("python", srcPath, addr)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Printf("[ERROR] yeelight script failed: %s", err)
