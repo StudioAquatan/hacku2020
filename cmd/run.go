@@ -162,7 +162,7 @@ func notify(oinori bool) {
 func notifyLight(addr string, oinori bool, respStr chan string) {
 	if oinori {
 		 // Negative
-		err := exec.Command("python light.py", addr).Start()
+		err := exec.Command("python", "./light_control/light.py", addr).Start()
 		if err != nil {
 			log.Printf("[ERROR] run light.py failed: %s", err)
 			return
