@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"bufio"
+	"github.com/StudioAquatan/hacku2020/pkg/character"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -24,12 +25,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sync"
-	"time"
-
-	"github.com/StudioAquatan/hacku2020/pkg/email"
-	"github.com/StudioAquatan/hacku2020/pkg/slack"
-
-	"github.com/StudioAquatan/hacku2020/pkg/character"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -79,14 +74,14 @@ func init() {
 
 func runServer() {
 	configPath := viper.GetString("run.config")
-	messageNum := viper.GetInt("run.num")
-	server := viper.GetString("run.server")
-	addr := viper.GetString("run.addr")
-	pass := viper.GetString("run.password")
-	box := viper.GetString("run.box")
-	token := viper.GetString("run.token")
-	channelID := viper.GetString("run.channel")
-	ecChan := make(chan email.Content)
+	//messageNum := viper.GetInt("run.num")
+	//server := viper.GetString("run.server")
+	//addr := viper.GetString("run.addr")
+	//pass := viper.GetString("run.password")
+	//box := viper.GetString("run.box")
+	//token := viper.GetString("run.token")
+	//channelID := viper.GetString("run.channel")
+	//ecChan := make(chan email.Content)
 
 	dirPath, fileName := filepath.Split(configPath)
 	viper.SetConfigName(fileName)
@@ -102,47 +97,48 @@ func runServer() {
 	if err != nil {
 		log.Fatalf("Fatal error unmarshal config file: %s \n", err)
 	}
-	cis := yc.Characters
+	//cis := yc.Characters
 
-	go email.WatchEmail(ecChan, server, box, addr, pass)
+	//go email.WatchEmail(ecChan, server, box, addr, pass)
 
-	for {
-		var oinori bool
-		ec := <-ecChan
-		if !email.ClassifyScreeningMailBySubj(ec.Subject) {
-			log.Printf("[INFO] Ignored email subject: %s", ec.Subject)
-			continue
-		}
-		if email.ClassifyAcceptanceMailByBody(ec.Body) {
-			oinori = true
-		}
-		if !email.ClassifyOinoriMailByBody(ec.Body) && !oinori {
-			log.Printf("[INFO] Ignored email Body: %s", ec.Body)
-			continue
-		}
-		if !email.ClassifyOinoriMailBySentiment(ec.Body) {
-			log.Printf("[INFO] Ignored email by sentiment score: %s", ec.Body)
-			continue
-		}
+	//for {
+		oinori := true
+		//ec := <-ecChan
+		//if !email.ClassifyScreeningMailBySubj(ec.Subject) {
+		//	log.Printf("[INFO] Ignored email subject: %s", ec.Subject)
+		//	continue
+		//}
+		//if email.ClassifyAcceptanceMailByBody(ec.Body) {
+		//	oinori = false
+		//}
+		//if !email.ClassifyOinoriMailByBody(ec.Body) && oinori {
+		//	log.Printf("[INFO] Ignored email Body: %s", ec.Body)
+		//	continue
+		//}
+		//if !email.ClassifyOinoriMailBySentiment(ec.Body) {
+		//	log.Printf("[INFO] Ignored email by sentiment score: %s", ec.Body)
+		//	continue
+		//}
 
 		wg := &sync.WaitGroup{} // WaitGroupの値を作る
 		go func() {
 			wg.Add(1)
+			log.Print("passed")
 			notify(oinori)
 			wg.Done()
 		}()
 
-		mis := character.CreateMessageInfoByRandom(cis, messageNum, oinori)
-		for _, mi := range *mis {
-			i := slack.NewSlackMessageInfo(token, channelID, mi.Name, mi.Icon, mi.Message)
-			err := i.PostMessage()
-			if err != nil {
-				log.Printf("[ERROR] %s", err)
-			}
-			time.Sleep(1 * time.Second)
-		}
+		//mis := character.CreateMessageInfoByRandom(cis, messageNum, oinori)
+		//for _, mi := range *mis {
+		//	i := slack.NewSlackMessageInfo(token, channelID, mi.Name, mi.Icon, mi.Message)
+		//	err := i.PostMessage()
+		//	if err != nil {
+		//		log.Printf("[ERROR] %s", err)
+		//	}
+		//	time.Sleep(1 * time.Second)
+		//}
 		wg.Wait()
-	}
+	//}
 }
 
 func notify(oinori bool) {
@@ -150,11 +146,19 @@ func notify(oinori bool) {
 	m5stackAddr := viper.GetString("run.m5stack")
 	respM5stack := make(chan string)
 
-	go notifyLight(yeelightAddr, oinori)
-	go notifyM5stack(m5stackAddr, oinori, respM5stack)
+	wg := &sync.WaitGroup{} // WaitGroupの値を作る
+	go func() {
+		wg.Add(1)
+		notifyLight(yeelightAddr, oinori)
+		notifyM5stack(m5stackAddr, oinori, respM5stack)
+		wg.Done()
+	}()
+
+
+
 
 	log.Printf("[INFO] m5stack api response: %s", <-respM5stack)
-
+	wg.Wait()
 	return
 }
 
@@ -165,7 +169,7 @@ func notifyLight(addr string, oinori bool) {
 	}
 
 	srcPath := "./light_control/" + src
-	cmd := exec.Command("python", srcPath, addr)
+	cmd := exec.Command("python3", srcPath, addr)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Printf("[ERROR] yeelight script failed: %s", err)
@@ -210,13 +214,9 @@ func notifyLight(addr string, oinori bool) {
 	}
 
 	//一応Waitでプロセスの終了をまつ
-	ret := cmd.Wait()
-	if ret != nil {
-		log.Printf("[ERROR] yeelight script failed: %s", err)
-	}
+	err = cmd.Wait()
 	if err != nil {
 		log.Printf("[ERROR] yeelight script failed: %s", err)
-		return
 	}
 }
 
