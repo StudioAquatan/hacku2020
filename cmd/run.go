@@ -122,7 +122,7 @@ func runServer() {
 		}
 		if res, score := email.ClassifyOinoriMailBySentiment(ec.Body); res {
 			log.Printf("[INFO] Sentiment score:%f\n", score)
-			oinori = false
+			oinori = true
 		}
 
 		wg := &sync.WaitGroup{}
@@ -140,7 +140,7 @@ func runServer() {
 			if err != nil {
 				log.Printf("[ERROR] %s", err)
 			}
-			time.Sleep(1 * time.Second)
+			time.Sleep(3 * time.Second)
 		}
 		wg.Wait()
 	}

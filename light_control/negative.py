@@ -12,9 +12,9 @@ def light_control(addr):
     print('Start lighting...')
     time.sleep(10)
 
-    for i in range(0, 256, 5):
-        bulb.set_rgb(i, 128, 255 - i)
-        print('R:%d G:128 B:%d' % (i, 255 - i))
+    for i in range(0, 256, 15):
+        bulb.set_rgb(i, 128 - (int)(i / 5), 255 - i)
+        print('R:%d G:%d B:%d' % (i, 128-i/5, 255 - i))
         time.sleep(1)
 
     time.sleep(10)
