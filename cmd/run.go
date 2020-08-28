@@ -97,12 +97,6 @@ func runServer() {
 		log.Fatalf("Fatal error config file: %s \n", err)
 	}
 
-	var yc YamlConfig
-	err = viper.Unmarshal(&yc)
-	if err != nil {
-		log.Fatalf("Fatal error unmarshal config file: %s \n", err)
-	}
-
 	go email.WatchEmail(ecChan, server, box, addr, pass)
 
 	for {
@@ -133,7 +127,13 @@ func runServer() {
 			wg.Done()
 		}()
 
+		var yc YamlConfig
+		err = viper.Unmarshal(&yc)
+		if err != nil {
+			log.Fatalf("Fatal error unmarshal config file: %s \n", err)
+		}
 		cis := yc.Characters
+
 		mis := character.CreateMessageInfoByRandom(cis, messageNum, oinori)
 		for _, mi := range *mis {
 			i := slack.NewSlackMessageInfo(token, channelID, mi.Name, mi.Icon, mi.Message)
