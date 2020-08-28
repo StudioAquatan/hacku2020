@@ -54,7 +54,7 @@ func removeCharacter(cis *[]Info, index int) []Info {
 	return newCis
 }
 
-func CreateMessageInfoByRandom(cis []Info, messageNum int, oinori bool) *[]MessageInfo {
+func CreateMessageInfoByRandom(cis *[]Info, messageNum int, oinori bool) *[]MessageInfo {
 	var mis []MessageInfo
 
 	rand.Seed(time.Now().UnixNano())

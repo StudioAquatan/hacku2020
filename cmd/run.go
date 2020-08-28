@@ -102,7 +102,6 @@ func runServer() {
 	if err != nil {
 		log.Fatalf("Fatal error unmarshal config file: %s \n", err)
 	}
-	cis := yc.Characters
 
 	go email.WatchEmail(ecChan, server, box, addr, pass)
 
@@ -134,7 +133,8 @@ func runServer() {
 			wg.Done()
 		}()
 
-		mis := character.CreateMessageInfoByRandom(cis, messageNum, oinori)
+		cis := yc.Characters
+		mis := character.CreateMessageInfoByRandom(&cis, messageNum, oinori)
 		for _, mi := range *mis {
 			i := slack.NewSlackMessageInfo(token, channelID, mi.Name, mi.Icon, mi.Message)
 			err := i.PostMessage()
