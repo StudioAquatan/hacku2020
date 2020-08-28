@@ -134,7 +134,7 @@ func runServer() {
 		}()
 
 		cis := yc.Characters
-		mis := character.CreateMessageInfoByRandom(&cis, messageNum, oinori)
+		mis := character.CreateMessageInfoByRandom(cis, messageNum, oinori)
 		for _, mi := range *mis {
 			i := slack.NewSlackMessageInfo(token, channelID, mi.Name, mi.Icon, mi.Message)
 			err := i.PostMessage()
