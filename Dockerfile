@@ -4,6 +4,11 @@ COPY ./ ${PROJECT_DIR}/
 WORKDIR ${PROJECT_DIR}/
 RUN go build -i -o ./bin/oinori
 
+FROM python:3.7
+USER root
+WORKDIR ./light_control
+RUN pip install yeelight
+
 FROM alpine:3.12 AS prod
 
 COPY --from=builder /go/src/github.com/StudioAquatan/hacku2020/bin/oinori /

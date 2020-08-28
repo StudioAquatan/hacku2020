@@ -20,12 +20,14 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os/exec"
 	"path/filepath"
 	"sync"
 	"time"
 
-	"github.com/StudioAquatan/hacku2020/pkg/email"
 	"github.com/StudioAquatan/hacku2020/pkg/slack"
+
+	"github.com/StudioAquatan/hacku2020/pkg/email"
 
 	"github.com/StudioAquatan/hacku2020/pkg/character"
 
@@ -95,40 +97,42 @@ func runServer() {
 		log.Fatalf("Fatal error config file: %s \n", err)
 	}
 
-	var yc YamlConfig
-	err = viper.Unmarshal(&yc)
-	if err != nil {
-		log.Fatalf("Fatal error unmarshal config file: %s \n", err)
-	}
-	cis := yc.Characters
-
 	go email.WatchEmail(ecChan, server, box, addr, pass)
 
 	for {
-		var oinori bool
+		oinori := true
 		ec := <-ecChan
 		if !email.ClassifyScreeningMailBySubj(ec.Subject) {
 			log.Printf("[INFO] Ignored email subject: %s", ec.Subject)
 			continue
 		}
+
 		if email.ClassifyAcceptanceMailByBody(ec.Body) {
-			oinori = true
-		}
-		if !email.ClassifyOinoriMailByBody(ec.Body) && !oinori {
-			log.Printf("[INFO] Ignored email Body: %s", ec.Body)
-			continue
-		}
-		if !email.ClassifyOinoriMailBySentiment(ec.Body) {
-			log.Printf("[INFO] Ignored email by sentiment score: %s", ec.Body)
-			continue
+			oinori = false
 		}
 
-		wg := &sync.WaitGroup{} // WaitGroupの値を作る
+		if !email.ClassifyOinoriMailByBody(ec.Body) && oinori {
+			res, score := email.ClassifyOinoriMailBySentiment(ec.Body)
+			log.Printf("[INFO] Sentiment score:%f\n", score)
+			if !res {
+				log.Printf("[INFO] Ignored email Body: %s", ec.Body)
+				continue
+			}
+		}
+
+		wg := &sync.WaitGroup{}
+		wg.Add(1)
 		go func() {
-			wg.Add(1)
 			notify(oinori)
 			wg.Done()
 		}()
+
+		var yc YamlConfig
+		err = viper.Unmarshal(&yc)
+		if err != nil {
+			log.Fatalf("Fatal error unmarshal config file: %s \n", err)
+		}
+		cis := yc.Characters
 
 		mis := character.CreateMessageInfoByRandom(cis, messageNum, oinori)
 		for _, mi := range *mis {
@@ -137,50 +141,39 @@ func runServer() {
 			if err != nil {
 				log.Printf("[ERROR] %s", err)
 			}
-			time.Sleep(1 * time.Second)
+			time.Sleep(3 * time.Second)
 		}
+		log.Printf("[INFO] complete execution email Body: %s", ec.Body)
 		wg.Wait()
 	}
 }
 
 func notify(oinori bool) {
-	lightAddr := viper.GetString("run.light")
+	yeelightAddr := viper.GetString("run.light")
 	m5stackAddr := viper.GetString("run.m5stack")
-	respLight := make(chan string)
 	respM5stack := make(chan string)
+	respYeelight := make(chan string)
 
-	go notifyLight(lightAddr, oinori, respLight)
+	go notifyLight(yeelightAddr, oinori, respYeelight)
 	go notifyM5stack(m5stackAddr, oinori, respM5stack)
 
-	log.Printf("[INFO] light api response: %s", <-respLight)
+	log.Printf("[INFO] yeelight command response: %s", <-respYeelight)
 	log.Printf("[INFO] m5stack api response: %s", <-respM5stack)
-
 	return
 }
 
-func notifyLight(addr string, oinori bool, respStr chan string) {
-	urlVal := url.Values{}
+func notifyLight(addr string, oinori bool, out chan string) {
+	src := "positive.py"
 	if oinori {
-		urlVal.Add("status", "negative")
-	} else {
-		urlVal.Add("status", "positive")
+		src = "negative.py"
 	}
-	urlStr := "http://" + addr + LightEndpointPath + urlVal.Encode()
-	resp, err := http.Get(urlStr)
-	if err != nil {
-		log.Printf("[ERROR] POST to Light API failed: %s", err)
-		respStr <- ""
-		return
-	}
-	defer resp.Body.Close()
 
-	b, err := ioutil.ReadAll(resp.Body)
+	srcPath := "./light_control/" + src
+	res, err := exec.Command("python3", srcPath, addr).Output()
 	if err != nil {
-		log.Printf("[ERROR] ioutil.ReadAll failed: %s", err)
-		respStr <- ""
-		return
+		log.Fatalf("[ERROR] notifyLight err: %s", err)
 	}
-	respStr <- string(b)
+	out <- string(res)
 }
 
 func notifyM5stack(addr string, oinori bool, respStr chan string) {
@@ -190,8 +183,8 @@ func notifyM5stack(addr string, oinori bool, respStr chan string) {
 	} else {
 		urlVal.Add("status", "positive")
 	}
-	urlStr := "http://" + addr + M5stackEndpointPath + urlVal.Encode()
-	resp, err := http.Get(urlStr)
+	urlStr := "http://" + addr + M5stackEndpointPath + "?" + urlVal.Encode()
+	resp, err := http.Post(urlStr, "", nil)
 	if err != nil {
 		log.Printf("[ERROR] POST to M5stack API failed: %s", err)
 		respStr <- ""
