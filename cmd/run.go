@@ -113,22 +113,23 @@ func runServer() {
 			log.Printf("[INFO] Ignored email subject: %s", ec.Subject)
 			continue
 		}
+
 		if email.ClassifyAcceptanceMailByBody(ec.Body) {
 			oinori = false
 		}
+
 		if !email.ClassifyOinoriMailByBody(ec.Body) && oinori {
-			log.Printf("[INFO] Ignored email Body: %s", ec.Body)
-			continue
-		}
-		if res, score := email.ClassifyOinoriMailBySentiment(ec.Body); res {
+			res, score := email.ClassifyOinoriMailBySentiment(ec.Body)
 			log.Printf("[INFO] Sentiment score:%f\n", score)
-			oinori = true
+			if !res {
+				log.Printf("[INFO] Ignored email Body: %s", ec.Body)
+				continue
+			}
 		}
 
 		wg := &sync.WaitGroup{}
 		wg.Add(1)
 		go func() {
-			log.Print("passed")
 			notify(oinori)
 			wg.Done()
 		}()
