@@ -12,13 +12,13 @@ def light_control(addr):
     bulb.set_rgb(255, 128, 0)
     print('Start lighting...')
 
-    for i in range(100):
-        r = random.randint(0,256)
-        g = random.randint(0,256)
-        b = random.randint(0,256)
+    for i in range(40):
+        r = random.randint(0, 256)
+        g = random.randint(0, 256)
+        b = random.randint(0, 256)
         bulb.set_rgb(r, g, b)
         print('R:%d G:%d B:%d' % (r, g, b))
-        time.sleep(0.2)
+        time.sleep(0.5)
 
     bulb.turn_off()
     print('Stop lighting')
