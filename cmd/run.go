@@ -143,6 +143,7 @@ func runServer() {
 			}
 			time.Sleep(3 * time.Second)
 		}
+		log.Printf("[INFO] complete execution email Body: %s", ec.Body)
 		wg.Wait()
 	}
 }
