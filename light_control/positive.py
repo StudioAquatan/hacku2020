@@ -1,5 +1,6 @@
 import time
 import sys
+import random
 
 import yeelight
 
@@ -10,19 +11,15 @@ def light_control(addr):
     bulb.turn_on()
     bulb.set_rgb(255, 128, 0)
     print('Start lighting...')
-    time.sleep(10)
 
-    for i in range(0, 128, 5):
-        bulb.set_rgb(255, 128 + i, 0)
-        print('R:255 G:%d B:0' % (128 + i))
-        time.sleep(1)
+    for i in range(40):
+        r = random.randint(0, 256)
+        g = random.randint(0, 256)
+        b = random.randint(0, 256)
+        bulb.set_rgb(r, g, b)
+        print('R:%d G:%d B:%d' % (r, g, b))
+        time.sleep(0.5)
 
-    for i in range(0, 128, 5):
-        bulb.set_rgb(255, 255 - i, 0)
-        print('R:255 G:%d B:0' % (255 - i))
-        time.sleep(1)
-
-    time.sleep(10)
     bulb.turn_off()
     print('Stop lighting')
     return ()
