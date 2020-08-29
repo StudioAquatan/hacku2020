@@ -72,3 +72,6 @@ $ ./oinori --character-config-path ./character_config.yaml \
 - `--m5stack-host`
     - M5stackのIPアドレスまたはドメイン名
 
+## 関連リポジトリ
+- [hacku2020_m5stack](https://github.com/StudioAquatan/hacku2020_m5stack)
+- [HackU2020_AR](https://github.com/StudioAquatan/HackU2020_AR)
